@@ -1,89 +1,88 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import KeyButton from "./KeyButton";
 import Display from "./Display";
 
 const Calculator = () => {
-  const [display, setDisplay] = useState("");
-  const [operator, setOperator] = useState(null);
-  const [previousValue, setPreviousValue] = useState(null);
+  const [input, setInput] = useState("");
+  const [result, setResult] = useState("");
+  const [history, setHistory] = useState([]);
 
-  const handleButtonClick = (value) => {
-    if (value === "C") {
-      setDisplay("");
-      setOperator(null);
-      setPreviousValue(null);
-    } else if (value === "=") {
-      if (operator && previousValue !== null) {
-        // Perform the calculation
-        const currentValue = parseFloat(display);
-        const result = calculate(previousValue, currentValue, operator);
-        setDisplay(String(result));
-        setPreviousValue(result);
-        setOperator(null);
-      }
-    } else if (["+", "-", "x", "÷", "%"].includes(value)) {
-      setOperator(value);
-      setPreviousValue(parseFloat(display));
-      setDisplay("");
-    } else if (value === "+/-") {
-      setDisplay((prev) => String(parseFloat(prev) * -1));
-    } else if (value === ".") {
-      if (!display.includes(".")) {
-        setDisplay((prev) => prev + ".");
-      }
-    } else if (value === "(" || value === ")") {
-      setDisplay((prev) => prev + value);
-    } else {
-      setDisplay((prev) => prev + value);
+  // Load history from localStorage when the component mounts
+  useEffect(() => {
+    const storedHistory = localStorage.getItem("calcHistory");
+    if (storedHistory) {
+      setHistory(JSON.parse(storedHistory));
     }
-  };
+  }, []);
 
-  // Calculation logic
-  const calculate = (prev, current, operator) => {
-    switch (operator) {
-      case "+":
-        return prev + current;
-      case "-":
-        return prev - current;
-      case "x":
-        return prev * current;
-      case "÷":
-        return prev / current;
-      case "%":
-        return prev % current;
-      default:
-        return current;
+  // Save history to localStorage whenever it updates
+  useEffect(() => {
+    if (history.length > 0) {
+      localStorage.setItem("calcHistory", JSON.stringify(history));
+    }
+  }, [history]);
+
+  const handleButtonClick = (label) => {
+    if (label === "=") {
+      try {
+        const evalResult = eval(input.replace("÷", "/").replace("x", "*"));
+        setResult(evalResult);
+        const newHistoryEntry = `${input} = ${evalResult}`;
+        setHistory([...history, newHistoryEntry]);
+        setInput(evalResult.toString());
+      } catch (error) {
+        setResult("Error");
+      }
+    } else if (label === "C") {
+      setInput("");
+      setResult("");
+    } else {
+      setInput(input + label);
     }
   };
 
   return (
-    <div className='flex flex-col items-center'>
-      <Display value={display || "0"} />
-      <div className='grid grid-cols-4 gap-2'>
+    <div className='p-4 rounded shadow-md w-full max-w-md'>
+      <Display value={input || result || "0"} />
+      <div className='grid grid-cols-4 gap-2 mt-4'>
         {[
           "C",
           "(",
           ")",
-          "%",
+          "÷",
           "7",
           "8",
           "9",
-          "÷",
+          "x",
           "4",
           "5",
           "6",
-          "x",
+          "-",
           "1",
           "2",
           "3",
-          "-",
+          "+",
           "+/-",
           "0",
           ".",
           "=",
         ].map((label) => (
-          <KeyButton key={label} label={label} onClick={handleButtonClick} />
+          <KeyButton
+            key={label}
+            label={label}
+            onClick={() => handleButtonClick(label)}
+          />
         ))}
+      </div>
+      <div className='mt-4 w-full max-w-md'>
+        <h2 className='text-xl font-bold mb-2'>History</h2>
+        <ul className='p-4 rounded shadow-md'>
+          {history.map((entry, index) => (
+            <li key={index} className='border-b last:border-none py-2'>
+              {entry}
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   );
